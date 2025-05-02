@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CPB Status Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: #f0f0f0;
+    }
+    button {
+      font-size: 1.2em;
+      padding: 15px 25px;
+      margin: 10px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .available { background: #4CAF50; color: white; }
+    .busy { background: #f44336; color: white; }
+    .away { background: #2196F3; color: white; }
+    .dnd { background: #9C27B0; color: white; }
+    #status { margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Control CPB Status</h2>
+  <button class="available" onclick="sendStatus('available')">Available</button>
+  <button class="busy" onclick="sendStatus('busy')">Busy</button>
+  <button class="away" onclick="sendStatus('away')">Away</button>
+  <button class="dnd" onclick="sendStatus('dnd')">DND</button>
+
+  <div id="status">Not connected</div>
+
+  <script>
+    let uartService = null;
+    let txChar = null;
+
+    async function connectCPB() {
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ namePrefix: "Circuit" }],
+        optionalServices: ["6e400001-b5a3-f393-e0a9-e50e24dcca9e"]
+      });
+
+      const server = await device.gatt.connect();
+      uartService = await server.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
+      txChar = await uartService.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e");
+
+      document.getElementById("status").innerText = `✅ Connected to ${device.name}`;
+    }
+
+    async function sendStatus(message) {
+      if (!txChar) {
+        document.getElementById("status").innerText = "🔌 Connecting...";
+        await connectCPB();
+      }
+
+      const encoder = new TextEncoder();
+      await txChar.writeValue(encoder.encode(message));
+      document.getElementById("status").innerText = `📤 Sent: ${message}`;
+    }
+  </script>
+</body>
+</html>
